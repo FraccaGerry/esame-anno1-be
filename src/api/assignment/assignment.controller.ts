@@ -53,3 +53,18 @@ export const completeAssignment = async (
     next(err);
   }
 };
+
+export const listAssignmentStudents = async (
+  req: TypedRequest<unknown, unknown, AssignmentParams>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = req.user as User;
+    const { classroomId, id } = req.params;
+    const students = await assignmentSrv.listStudents(classroomId, id, user);
+    res.json(students);
+  } catch (err) {
+    next(err);
+  }
+};

@@ -28,8 +28,7 @@ function serialize(assignment: any, user: User) {
   const json = assignment.toJSON();
   if (user.role === Role.Student) {
     json.completed = assignment.completedBy
-      .map((id: any) => id.toString())
-      .includes(user.id);
+      .some((c: any) => c.student.toString() === user.id);
   }
   return json;
 }
@@ -67,16 +66,41 @@ async function complete(classroomId: string, assignmentId: string, student: User
   if (!assignment) throw new NotFoundError();
 
   const alreadyCompleted = assignment.completedBy
-    .map((id: any) => id.toString())
-    .includes(student.id);
+    .some(c => c.student.toString() === student.id);
 
   if (alreadyCompleted) throw new AlreadyCompletedError();
 
-  assignment.completedBy.push(student.id as any);
+  assignment.completedBy.push({
+    student: new Types.ObjectId(student.id),
+    completedAt: new Date()
+  });
   await assignment.save();
 
   const populated = await AssignmentModel.findById(assignment.id);
   return serialize(populated, student);
 }
 
-export default { create, list, complete };
+async function listStudents(classroomId: string, assignmentId: string, teacher: User) {
+  const classroom = await findClassroomForTeacher(classroomId, teacher.id);
+
+  assertValidId(assignmentId);
+  const assignment = await AssignmentModel.findOne({ _id: assignmentId, classroom: classroomId });
+  if (!assignment) throw new NotFoundError();
+
+  await classroom.populate('students');
+
+  const completedAtByStudent = new Map(
+    assignment.completedBy.map(c => [c.student.toString(), c.completedAt] as const)
+  );
+
+  return (classroom.students as any[]).map(student => {
+    const completedAt = completedAtByStudent.get(student.id);
+    return {
+      student: student.toJSON(),
+      completed: completedAt !== undefined,
+      completedAt: completedAt ?? null
+    };
+  });
+}
+
+export default { create, list, complete, listStudents };

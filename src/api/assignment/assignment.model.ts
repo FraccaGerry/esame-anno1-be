@@ -1,11 +1,16 @@
 import { model, Schema } from "mongoose";
-import { Assignment } from "./assignment.entity";
+import { Assignment, Completion } from "./assignment.entity";
+
+const completionSchema = new Schema<Completion>({
+  student: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  completedAt: { type: Date, required: true }
+}, { _id: false });
 
 const assignmentSchema = new Schema<Assignment>({
   title: { type: String, required: true },
   classroom: { type: Schema.Types.ObjectId, ref: 'Classroom', required: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  completedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  completedBy: [completionSchema],
   createdAt: { type: Date, default: Date.now }
 });
 
